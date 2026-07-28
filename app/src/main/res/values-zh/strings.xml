@@ -23,6 +23,9 @@
     <string name="disconnect_ask">检测到连接已断开，请退出后重新连接</string>
 
     <string name="need_register">需要注册</string>
+
+    <string name="more_settings">更多设置 ▼</string>
+    <string name="collapse_settings">收起设置 ▲</string>
 </resources>
 
 

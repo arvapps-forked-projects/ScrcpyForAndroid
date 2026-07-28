@@ -18,6 +18,8 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.os.SystemClock;
 import android.text.TextUtils;
+import android.transition.AutoTransition;
+import android.transition.TransitionManager;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
@@ -33,8 +35,10 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ListPopupWindow;
+import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.Switch;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.client.scrcpy.utils.AdbHelper;
@@ -235,21 +239,32 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         landscape = false;  // 将模式重新置为 竖屏，模式不正确将导致连接黑屏
         setContentView(R.layout.activity_main);
-        final Button startButton = findViewById(R.id.button_start);
-        // final Button floatButton = findViewById(R.id.button_start_float);
+
+        // find view by id
+        ScrollView scrollView = findViewById(R.id.main_scroll_view);
+        Button startButton = findViewById(R.id.button_start);
+        TextView btnMoreSettings = findViewById(R.id.btn_more_settings);
+        LinearLayout layoutMoreSettings = findViewById(R.id.layout_more_settings);
 
         sendCommands = new SendCommands();
 
         startButton.setOnClickListener(v -> {
-            // local_ip = wifiIpAddress();
             getAttributes();
             connectScrcpyServer(serverAdr);
         });
+        btnMoreSettings.setOnClickListener(v -> {
+            AutoTransition autoTransition = new AutoTransition();
+            TransitionManager.beginDelayedTransition(scrollView, autoTransition);
 
-//        floatButton.setOnClickListener(v -> {
-//            getAttributes();
-//            showDisplayWindow();
-//        });
+            if (layoutMoreSettings.getVisibility() == View.GONE) {
+                layoutMoreSettings.setVisibility(View.VISIBLE);
+                btnMoreSettings.setText(R.string.collapse_settings);
+            } else {
+                layoutMoreSettings.setVisibility(View.GONE);
+                btnMoreSettings.setText(R.string.more_settings);
+            }
+        });
+
         get_saved_preferences();
 
         EditText editText = findViewById(R.id.editText_server_host);
@@ -262,7 +277,6 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
 
         // 无头模式，实际上要隐藏掉所有控件，否则会被显示出 ip 地址
         if (headlessMode) {
-            View scrollView = findViewById(R.id.main_scroll_view);
             if (scrollView != null) {
                 scrollView.setVisibility(View.INVISIBLE);
             }
