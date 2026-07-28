@@ -5,6 +5,7 @@
 
     <color name="status_bar">#3C93F0</color>
 
+    <color name="btn_color_nomal">#323540</color>
 
     <color name="theme_color">#1D2228</color>
 </resources>

@@ -24,7 +24,7 @@ public final class Server {
 
             try {
                 // synchronous
-                screenEncoder.streamScreen(device, connection.getOutputStream());
+                screenEncoder.streamScreen(options, device, connection.getOutputStream());
             } catch (IOException e) {
                 e.printStackTrace();
                 // this is expected on close
@@ -50,33 +50,35 @@ public final class Server {
 
     @SuppressWarnings("checkstyle:MagicNumber")
     private static Options createOptions(String... args) {
-        Options options = new Options();
+//        Options options = new Options();
+//
+//        if (args.length < 1) {
+//            return options;
+//        }
+//        ip = String.valueOf(args[0]);
+//
+//
+//        if (args.length < 2) {
+//            return options;
+//        }
+//        int maxSize = Integer.parseInt(args[1]) & ~7; // multiple of 8
+//        options.setMaxSize(maxSize);
+//
+//        if (args.length < 3) {
+//            return options;
+//        }
+//        int bitRate = Integer.parseInt(args[2]);
+//        options.setBitRate(bitRate);
+//
+//        if (args.length < 4) {
+//            return options;
+//        }
+//        // use "adb forward" instead of "adb tunnel"? (so the server must listen)
+//        boolean tunnelForward = Boolean.parseBoolean(args[3]);
+//        options.setTunnelForward(tunnelForward);
+//        return options;
 
-        if (args.length < 1) {
-            return options;
-        }
-        ip = String.valueOf(args[0]);
-
-
-        if (args.length < 2) {
-            return options;
-        }
-        int maxSize = Integer.parseInt(args[1]) & ~7; // multiple of 8
-        options.setMaxSize(maxSize);
-
-        if (args.length < 3) {
-            return options;
-        }
-        int bitRate = Integer.parseInt(args[2]);
-        options.setBitRate(bitRate);
-
-        if (args.length < 4) {
-            return options;
-        }
-        // use "adb forward" instead of "adb tunnel"? (so the server must listen)
-        boolean tunnelForward = Boolean.parseBoolean(args[3]);
-        options.setTunnelForward(tunnelForward);
-        return options;
+        return Options.createOptions(args);
     }
 
     public static void main(String... args) throws Exception {

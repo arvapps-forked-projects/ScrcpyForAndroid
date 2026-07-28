@@ -1,4 +1,4 @@
-package org.server.scrcpy;
+package org.client.scrcpy;
 
 public class Options {
 

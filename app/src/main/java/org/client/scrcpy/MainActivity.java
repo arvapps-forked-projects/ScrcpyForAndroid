@@ -7,14 +7,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.pm.ActivityInfo;
-import android.content.res.AssetManager;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -40,20 +38,13 @@ import android.widget.Switch;
 import android.widget.Toast;
 
 import org.client.scrcpy.utils.AdbHelper;
-import org.client.scrcpy.utils.HttpRequest;
 import org.client.scrcpy.utils.PreUtils;
 import org.client.scrcpy.utils.Progress;
 import org.client.scrcpy.utils.ThreadUtils;
 import org.client.scrcpy.utils.Util;
 import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
 
@@ -97,7 +88,8 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
                     Progress.showDialog(MainActivity.this, getString(R.string.please_wait));
                 }
                 scrcpy.start(surface, Scrcpy.LOCAL_IP + ":" + Scrcpy.LOCAL_FORWART_PORT,
-                        screenHeight, screenWidth, delayControl);
+                        screenHeight, screenWidth, delayControl,
+                        PreUtils.get(MainActivity.this, Constant.AUDIO_FORWARD, true));
                 ThreadUtils.workPost(() -> {
                     boolean success = AdbHelper.executeWithTimeout(() -> {
                         while (!scrcpy.check_socket_connection()) {
@@ -321,9 +313,10 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
 
 
     public void get_saved_preferences() {
-        final EditText editTextServerHost = findViewById(R.id.editText_server_host);
-        final Switch aSwitch0 = findViewById(R.id.switch0);
-        final Switch aSwitch1 = findViewById(R.id.switch1);
+        EditText editTextServerHost = findViewById(R.id.editText_server_host);
+        Switch aSwitch0 = findViewById(R.id.switch0);
+        Switch aSwitch1 = findViewById(R.id.switch1);
+        Switch audioForwardSwitch = findViewById(R.id.switch_audio_enable);
         String historySpServerAdr = PreUtils.get(context, Constant.CONTROL_REMOTE_ADDR, "");
         if (TextUtils.isEmpty(historySpServerAdr)) {
             String[] historyList = getHistoryList();
@@ -335,6 +328,8 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         }
         aSwitch0.setChecked(PreUtils.get(context, Constant.CONTROL_NO, false));
         aSwitch1.setChecked(PreUtils.get(context, Constant.CONTROL_NAV, false));
+        audioForwardSwitch.setChecked(PreUtils.get(context, Constant.AUDIO_FORWARD, true));
+
         setSpinner(R.array.options_resolution_values, R.id.spinner_video_resolution, Constant.PREFERENCE_SPINNER_RESOLUTION);
         setSpinner(R.array.options_bitrate_keys, R.id.spinner_video_bitrate, Constant.PREFERENCE_SPINNER_BITRATE);
         setSpinner(R.array.options_delay_keys, R.id.delay_control_spinner, Constant.PREFERENCE_SPINNER_DELAY);
@@ -469,12 +464,13 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
         final Spinner videoResolutionSpinner = findViewById(R.id.spinner_video_resolution);
         final Spinner videoBitrateSpinner = findViewById(R.id.spinner_video_bitrate);
         final Spinner delayControlSpinner = findViewById(R.id.delay_control_spinner);
-        final Switch a_Switch0 = findViewById(R.id.switch0);
-        boolean no_control = a_Switch0.isChecked();
-        final Switch a_Switch1 = findViewById(R.id.switch1);
-        boolean nav = a_Switch1.isChecked();
-        PreUtils.put(context, Constant.CONTROL_NO, no_control);
-        PreUtils.put(context, Constant.CONTROL_NAV, nav);
+
+        Switch a_Switch0 = findViewById(R.id.switch0);
+        Switch a_Switch1 = findViewById(R.id.switch1);
+        Switch audioEnableSwitch = findViewById(R.id.switch_audio_enable);
+        PreUtils.put(context, Constant.CONTROL_NO, a_Switch0.isChecked());
+        PreUtils.put(context, Constant.CONTROL_NAV, a_Switch1.isChecked());
+        PreUtils.put(context, Constant.AUDIO_FORWARD, audioEnableSwitch.isChecked());
 
         final String[] videoResolutions = getResources().getStringArray(R.array.options_resolution_values)[videoResolutionSpinner.getSelectedItemPosition()].split("x");
         screenHeight = Integer.parseInt(videoResolutions[0]);
@@ -765,7 +761,8 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
                         serverPort,
                         localForwardPort,
                         Scrcpy.LOCAL_IP,
-                        videoBitrate, Math.max(screenHeight, screenWidth));
+                        videoBitrate, Math.max(screenHeight, screenWidth),
+                        PreUtils.get(context, Constant.AUDIO_FORWARD, true));
                 if (sendStatus == SendCommands.CmdStatus.SUCCESS) {
                     ThreadUtils.post(() -> {
                         if (!MainActivity.this.isFinishing()) {

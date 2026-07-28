@@ -82,12 +82,11 @@ public class Scrcpy extends Service {
 
     }
 
-    public void start(Surface surface, String serverAdr, int screenHeight, int screenWidth, int delay) {
-        this.videoDecoder = new VideoDecoder();
-        videoDecoder.start();
-
-        this.audioDecoder = new AudioDecoder();
-        audioDecoder.start();
+    public void start(Surface surface, String serverAdr, int screenHeight, int screenWidth, int delay, boolean enableAudio) {
+//        this.videoDecoder = new VideoDecoder();
+//        videoDecoder.start();
+//        this.audioDecoder = new AudioDecoder();
+//        audioDecoder.start();
 
         String[] serverInfo = Util.getServerHostAndPort(serverAdr);
         this.serverHost = serverInfo[0];
@@ -99,7 +98,7 @@ public class Scrcpy extends Service {
         Thread thread = new Thread(new Runnable() {
             @Override
             public void run() {
-                startConnection(serverHost, serverPort, delay);
+                startConnection(serverHost, serverPort, delay, enableAudio);
             }
         });
         thread.start();
@@ -234,12 +233,15 @@ public class Scrcpy extends Service {
         }
     }
 
-    private void startConnection(String ip, int port, int delay) {
+    private void startConnection(String ip, int port, int delay, boolean enableAudio) {
 
         videoDecoder = new VideoDecoder();
         videoDecoder.start();
-        audioDecoder = new AudioDecoder();
-        audioDecoder.start();
+
+        if (enableAudio){
+            audioDecoder = new AudioDecoder();
+            audioDecoder.start();
+        }
 
         DataInputStream dataInputStream = null;
         DataOutputStream dataOutputStream = null;

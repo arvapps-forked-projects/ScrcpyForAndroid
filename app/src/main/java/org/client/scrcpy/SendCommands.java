@@ -9,6 +9,9 @@ import org.client.scrcpy.utils.AdbHelper;
 import org.client.scrcpy.utils.ThreadUtils;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SendCommands {
@@ -25,28 +28,49 @@ public class SendCommands {
 
     }
 
-    public CmdStatus SendAdbCommands(Context context, final String ip, int port, int forwardport, String localip, int bitrate, int size) {
-        return this.SendAdbCommands(context, null, ip, port, forwardport, localip, bitrate, size);
+    public CmdStatus SendAdbCommands(Context context, final String ip, int port, int forwardport, String localip, int bitrate, int size, boolean enableAudio) {
+        return this.SendAdbCommands(context, null, ip, port, forwardport, localip, bitrate, size, enableAudio);
     }
 
-    public CmdStatus SendAdbCommands(Context context, final byte[] fileBase64, final String ip, int port, int forwardport, String localip, int bitrate, int size) {
+    public CmdStatus SendAdbCommands(Context context, final byte[] fileBase64, final String ip, int port, int forwardport, String localip, int bitrate, int size, boolean enableAudio) {
         AtomicReference<CmdStatus> status = new AtomicReference<>(CmdStatus.RUNNING);
-        String[] commands = new String[]{
+//        String[] commands = new String[]{
+//                "-s", ip + ":" + port,
+//                "shell",
+//                " CLASSPATH=/data/local/tmp/scrcpy-server.jar",
+//                "app_process",
+//                "/",
+//                "org.server.scrcpy.Server",
+//                "/" + localip,
+//                Long.toString(size),
+//                Long.toString(bitrate) + ";"
+//        };
+        // 更多参数可后续加入
+        Options options = new Options();
+        options.setIp(localip);
+        options.setMaxSize(size);
+        options.setBitRate(bitrate);
+        options.setTunnelForward(true);
+        options.setEnableAudioForward(enableAudio);
+
+        List<String> cmdList = new ArrayList<>();
+        Collections.addAll(cmdList,
                 "-s", ip + ":" + port,
                 "shell",
                 " CLASSPATH=/data/local/tmp/scrcpy-server.jar",
                 "app_process",
                 "/",
-                "org.server.scrcpy.Server",
-                "/" + localip,
-                Long.toString(size),
-                Long.toString(bitrate) + ";"
-        };
+                "org.server.scrcpy.Server"
+        );
+        Collections.addAll(cmdList, options.optionsToArgs());
+        cmdList.add(";");
+        String[] commands = cmdList.toArray(new String[0]);
+
         ThreadUtils.execute(() -> {
             try {
                 boolean serverIsRunning = AdbHelper.checkAdbServer();
                 Log.i("Scrcpy", "serverIsRunning: " + serverIsRunning);
-                if (!serverIsRunning || !AdbHelper.isRunning()){
+                if (!serverIsRunning || !AdbHelper.isRunning()) {
                     AdbHelper.restartAdb();
                     AdbHelper.waitForRunning(5);
                 }

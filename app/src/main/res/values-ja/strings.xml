@@ -12,6 +12,7 @@
   <string name="back_button">\u003C</string>
   <string name="switch0">ビューイングモード (コントロールなし)</string>
   <string name="switch1">下部のコントロールボタン (戻るボタン)</string>
+    <string name="switch_audio">音声転送を有効にしますか</string>
   <string name="connect_tips">ヒント: デバイスでワイヤレスデバッグを有効化する必要があります。\n\t\tadb ポートコマンドのリセット: adb tcpip 5555</string>
   <string name="please_wait">接続中 …</string>
   <string name="connect_faild">接続に失敗しました</string>

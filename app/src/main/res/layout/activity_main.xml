@@ -52,7 +52,7 @@
                 android:layout_marginLeft="10dp"
                 android:layout_marginTop="5dp"
                 android:layout_marginRight="10dp"
-                android:background="#323540"
+                android:background="@color/btn_color_nomal"
                 android:orientation="vertical"
                 android:paddingLeft="10dp"
                 android:paddingTop="5dp"
@@ -119,7 +119,7 @@
                 android:layout_marginLeft="10dp"
                 android:layout_marginTop="10dp"
                 android:layout_marginRight="10dp"
-                android:background="#323540"
+                android:background="@color/btn_color_nomal"
                 android:orientation="vertical"
                 android:paddingLeft="10dp"
                 android:paddingTop="5dp"
@@ -152,7 +152,7 @@
                 android:layout_marginLeft="10dp"
                 android:layout_marginTop="10dp"
                 android:layout_marginRight="10dp"
-                android:background="#323540"
+                android:background="@color/btn_color_nomal"
                 android:orientation="vertical"
                 android:paddingLeft="10dp"
                 android:paddingTop="5dp"
@@ -183,7 +183,7 @@
                 android:layout_marginLeft="10dp"
                 android:layout_marginTop="10dp"
                 android:layout_marginRight="10dp"
-                android:background="#323540"
+                android:background="@color/btn_color_nomal"
                 android:orientation="vertical"
                 android:paddingLeft="10dp"
                 android:paddingTop="5dp"
@@ -210,6 +210,40 @@
 
             </LinearLayout>
 
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="10dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginRight="10dp"
+                android:background="@color/btn_color_nomal"
+                android:orientation="vertical"
+                android:paddingLeft="10dp"
+                android:paddingTop="5dp"
+                android:paddingRight="10dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/delay_control"
+                    android:textAppearance="@android:style/TextAppearance"
+                    android:textColor="@color/white"
+                    android:textSize="16sp" />
+
+                <Spinner
+                    android:id="@+id/delay_control_spinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginLeft="20dp"
+                    android:layout_marginRight="20dp"
+                    android:entries="@array/options_delay_keys"
+                    android:minHeight="48dp"
+                    android:textColor="@color/white"
+                    tools:ignore="DuplicateSpeakableTextCheck" />
+
+            </LinearLayout>
+
+
             <Switch
                 android:id="@+id/switch0"
                 android:layout_width="match_parent"
@@ -218,7 +252,7 @@
                 android:layout_marginTop="10dp"
                 android:layout_marginRight="10dp"
                 android:layout_weight="1"
-                android:background="#323540"
+                android:background="@color/btn_color_nomal"
                 android:gravity="center_vertical"
                 android:paddingLeft="10dp"
                 android:paddingRight="10dp"
@@ -234,11 +268,27 @@
                 android:layout_marginTop="10dp"
                 android:layout_marginRight="10dp"
                 android:layout_weight="1"
-                android:background="#323540"
+                android:background="@color/btn_color_nomal"
                 android:gravity="center_vertical"
                 android:paddingLeft="10dp"
                 android:paddingRight="10dp"
                 android:text="@string/switch1"
+                android:textColor="@color/white"
+                android:textSize="15sp" />
+
+            <Switch
+                android:id="@+id/switch_audio_enable"
+                android:layout_width="match_parent"
+                android:layout_height="60dp"
+                android:layout_marginLeft="10dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginRight="10dp"
+                android:layout_weight="1"
+                android:background="@color/btn_color_nomal"
+                android:gravity="center_vertical"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp"
+                android:text="@string/switch_audio"
                 android:textColor="@color/white"
                 android:textSize="15sp" />
 

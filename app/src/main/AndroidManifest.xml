@@ -15,11 +15,14 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true">
+        <activity
+            android:name=".SettingActivity"
+            android:exported="false" />
 
         <service
             android:name=".Scrcpy"
             android:enabled="true"
-            android:exported="true"></service>
+            android:exported="true" />
         <service android:name=".FloatService" />
     </application>
 
