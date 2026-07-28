@@ -74,12 +74,14 @@ public class Scrcpy extends Service {
         this.screenHeight = NewHeight;
         this.surface = NewSurface;
 
-        videoDecoder.start();
-        audioDecoder.start();
-
+        if(videoDecoder != null){
+            videoDecoder.start();
+        }
+        if(audioDecoder != null){
+            audioDecoder.start();
+        }
 
         updateAvailable.set(true);
-
     }
 
     public void start(Surface surface, String serverAdr, int screenHeight, int screenWidth, int delay, boolean enableAudio) {
@@ -474,7 +476,9 @@ public class Scrcpy extends Service {
                             int dataLength = packet.length - audioPacket.headLength();
                             byte[] data = new byte[dataLength];
                             System.arraycopy(packet, audioPacket.headLength(), data, 0, dataLength);
-                            audioDecoder.configure(data);
+                            if(audioDecoder != null){
+                                audioDecoder.configure(data);
+                            }
                         } else if (audioPacket.flag == AudioPacket.Flag.END) {
                             // need close stream
                             Log.e("Scrcpy", "Audio END ... ");
@@ -483,8 +487,10 @@ public class Scrcpy extends Service {
                                 lastAudioOffset = System.currentTimeMillis() - (audioPacket.presentationTimeStamp / 1000);
                             }
                             if (System.currentTimeMillis() - (lastAudioOffset + (audioPacket.presentationTimeStamp / 1000)) < delay) {
-                                audioDecoder.decodeSample(packet, audioPacket.headLength(), packet.length - audioPacket.headLength(),
-                                        0, audioPacket.flag.getFlag());
+                                if(audioDecoder != null){
+                                    audioDecoder.decodeSample(packet, audioPacket.headLength(), packet.length - audioPacket.headLength(),
+                                            0, audioPacket.flag.getFlag());
+                                }
                             }
                         }
                     }
