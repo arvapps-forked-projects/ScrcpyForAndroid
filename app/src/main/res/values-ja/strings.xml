@@ -15,6 +15,17 @@
     <string name="switch_audio">音声転送を有効にしますか</string>
   <string name="connect_tips">ヒント: デバイスでワイヤレスデバッグを有効化する必要があります。\n\t\tadb ポートコマンドのリセット: adb tcpip 5555</string>
   <string name="please_wait">接続中 …</string>
+  <string name="scan_network">ネットワークをスキャンしてデバイスを探す</string>
+  <string name="scanning_network">ネットワークをスキャン中…</string>
+  <string name="scan_first_run_hint">「ネットワークをスキャンしてデバイスを探す」をタップすると、同一 Wi-Fi またはこの端末のホットスポット上の端末を検出します。</string>
+  <string name="scan_no_network_hint">アクティブなネットワークが見つかりません。Wi-Fi に接続するか、この端末のホットスポットを有効にしてから、もう一度スキャンしてください。</string>
+  <string name="scan_no_devices_hint">デバイスが見つかりません。対象デバイスでネットワーク経由の ADB / ワイヤレスデバッグが有効で、同一 Wi-Fi に接続しているか、この端末のホットスポットに接続していることを確認し、USB 接続で一度「adb tcpip 5555」を実行してください。</string>
+  <string name="scan_adb_section">接続済み (adb)</string>
+  <string name="scan_android_device">Android デバイス</string>
+  <string name="scan_ready">接続準備完了</string>
+  <string name="scan_offline">オフライン</string>
+  <string name="scan_unauthorized">対象デバイスでタップして承認してください</string>
+  <string name="scan_busy">現在のセッションを切断してからスキャンしてください</string>
   <string name="connect_faild">接続に失敗しました</string>
   <string name="connect_faild_ask">接続を再試行しますか？</string>
   <string name="disconnect">切断</string>

@@ -17,6 +17,18 @@
     <string name="connect_tips">Tips: You need to enable wireless debugging on your phone\n\t\tReset adb port command: adb tcpip 5555</string>
     <string name="please_wait">Connecting …</string>
 
+    <string name="scan_network">Scan network for devices</string>
+    <string name="scanning_network">Scanning network…</string>
+    <string name="scan_first_run_hint">Tap \"Scan network for devices\" to discover phones on your Wi-Fi or this phone\'s hotspot.</string>
+    <string name="scan_no_network_hint">No active network found. Connect to Wi-Fi or turn on this phone\'s hotspot, then tap Scan again.</string>
+    <string name="scan_no_devices_hint">No devices found. Make sure the target device has ADB over network / wireless debugging enabled, is on the same Wi-Fi or connected to this phone\'s hotspot, and run \"adb tcpip 5555\" once over USB.</string>
+    <string name="scan_adb_section">Already connected (adb)</string>
+    <string name="scan_android_device">Android device</string>
+    <string name="scan_ready">Ready to connect</string>
+    <string name="scan_offline">Offline</string>
+    <string name="scan_unauthorized">Tap to authorize on the target device</string>
+    <string name="scan_busy">Disconnect the current session before scanning</string>
+
     <string name="connect_faild">Connection failed</string>
     <string name="connect_faild_ask">Do you want to retry the connection?</string>
 

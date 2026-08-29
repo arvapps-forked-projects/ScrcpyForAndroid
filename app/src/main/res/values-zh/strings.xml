@@ -15,6 +15,17 @@
     <string name="switch_audio">是否启用音频转发</string>
     <string name="connect_tips">Tips: 需要开启手机的无线调试\n\t\t重置adb端口命令:adb tcpip 5555</string>
     <string name="please_wait">连接中 …</string>
+    <string name="scan_network">扫描网络查找设备</string>
+    <string name="scanning_network">正在扫描网络…</string>
+    <string name="scan_first_run_hint">点击"扫描网络查找设备"可发现同一 Wi-Fi 或本机热点下的手机设备。</string>
+    <string name="scan_no_network_hint">未找到活动网络。请连接 Wi-Fi 或开启本机热点后，重新扫描。</string>
+    <string name="scan_no_devices_hint">未找到设备。请确认目标设备已开启网络 ADB / 无线调试，与手机在同一 Wi-Fi 或已连接本机热点，并先通过 USB 执行一次"adb tcpip 5555"。</string>
+    <string name="scan_adb_section">已连接 (adb)</string>
+    <string name="scan_android_device">Android 设备</string>
+    <string name="scan_ready">可连接</string>
+    <string name="scan_offline">离线</string>
+    <string name="scan_unauthorized">请在目标设备上点击授权</string>
+    <string name="scan_busy">请先断开当前连接再扫描</string>
 
     <string name="connect_faild">连接失败</string>
     <string name="connect_faild_ask">是否重试连接?</string>

@@ -122,6 +122,40 @@
                 android:background="@color/btn_color_nomal"
                 android:orientation="vertical"
                 android:paddingLeft="10dp"
+                android:paddingTop="10dp"
+                android:paddingRight="10dp"
+                android:paddingBottom="10dp">
+
+                <Button
+                    android:id="@+id/button_scan_network"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:background="@drawable/btn_selector"
+                    android:text="@string/scan_network"
+                    android:textColor="@color/white"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/scan_hint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/scan_first_run_hint"
+                    android:textColor="#A8AAB5"
+                    android:textSize="13sp" />
+
+            </LinearLayout>
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="10dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginRight="10dp"
+                android:background="@color/btn_color_nomal"
+                android:orientation="vertical"
+                android:paddingLeft="10dp"
                 android:paddingTop="5dp"
                 android:paddingRight="10dp">
 

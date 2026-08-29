@@ -9,6 +9,7 @@ import android.content.ServiceConnection;
 import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -23,14 +24,18 @@ import android.transition.TransitionManager;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
+import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.Surface;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewConfiguration;
+import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -41,7 +46,9 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.client.scrcpy.model.DiscoveredDevice;
 import org.client.scrcpy.utils.AdbHelper;
+import org.client.scrcpy.utils.LanScanner;
 import org.client.scrcpy.utils.PreUtils;
 import org.client.scrcpy.utils.Progress;
 import org.client.scrcpy.utils.ThreadUtils;
@@ -49,6 +56,12 @@ import org.client.scrcpy.utils.Util;
 import org.json.JSONArray;
 import org.json.JSONException;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 
@@ -264,6 +277,11 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
             }
         });
 
+        Button btnScan = findViewById(R.id.button_scan_network);
+        if (btnScan != null) {
+            btnScan.setOnClickListener(v -> scanNetworkForDevices());
+        }
+
         get_saved_preferences();
 
         EditText editText = findViewById(R.id.editText_server_host);
@@ -303,6 +321,229 @@ public class MainActivity extends Activity implements Scrcpy.ServiceCallbacks, S
             }
         });
         listPopupWindow.show();
+    }
+
+    /**
+     * 扫描本机网络 (Wi-Fi + 热点网段) 上监听 adb 端口(5555)的设备，
+     * 并与 `adb devices` 已连接设备合并，以分组下拉列表展示。
+     * 所有网络探测均在后台线程执行。
+     */
+    private void scanNetworkForDevices() {
+        if (serviceBound && scrcpy != null) {
+            Toast.makeText(context, R.string.scan_busy, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Progress.showDialog(MainActivity.this, getString(R.string.scanning_network));
+        ThreadUtils.execute(() -> {
+            // 1) 枚举本地活动网段 (Wi-Fi + 热点/USB 共享)
+            final List<LanScanner.NetRange> ranges = LanScanner.getActiveRanges();
+            // 2) 合并已连接/已知的 adb 设备
+            final Map<String, String> adbDevices = AdbHelper.getAdbDevicesMap();
+
+            final List<Object> items = new ArrayList<>(); // String 分组头 + DiscoveredDevice
+            final Set<String> seen = new HashSet<>();
+
+            for (Map.Entry<String, String> entry : adbDevices.entrySet()) {
+                String serial = entry.getKey();
+                if (!AdbHelper.isTcpSerial(serial)) continue;
+                String[] hostPort = Util.getServerHostAndPort(serial);
+                try {
+                    final DiscoveredDevice device = new DiscoveredDevice(hostPort[0],
+                            Integer.parseInt(hostPort[1]), null, null,
+                            entry.getValue(), DiscoveredDevice.Source.ADB_LIST);
+                    if (seen.add(device.getAddress())) {
+                        items.add(device);
+                    }
+                } catch (NumberFormatException ignored) {
+                }
+            }
+
+            // 3) 逐网段并行探测 5555 端口
+            for (LanScanner.NetRange range : ranges) {
+                List<String> candidates = LanScanner.buildCandidates(
+                        Collections.singletonList(range), LanScanner.MAX_HOSTS_PER_RANGE);
+                if (candidates.isEmpty()) continue;
+                final Set<String> found = LanScanner.probe(candidates,
+                        Scrcpy.DEFAULT_ADB_PORT, LanScanner.PROBE_TIMEOUT_MS);
+                if (found.isEmpty()) continue;
+                List<String> sorted = new ArrayList<>(found);
+                Collections.sort(sorted);
+                boolean headerAdded = false;
+                for (String host : sorted) {
+                    String addr = host + ":" + Scrcpy.DEFAULT_ADB_PORT;
+                    if (seen.contains(addr)) continue;
+                    seen.add(addr);
+                    // 尽量取友好的设备名 (hostname)，超时则用 "Android device"
+                    String name = LanScanner.resolveHostname(host, 250);
+                    String state = adbDevices.get(addr);
+                    if (!headerAdded) {
+                        items.add(range.label);
+                        headerAdded = true;
+                    }
+                    items.add(new DiscoveredDevice(host, Scrcpy.DEFAULT_ADB_PORT,
+                            name, range.label, state, DiscoveredDevice.Source.SCAN));
+                }
+            }
+            final boolean noNetwork = ranges.isEmpty();
+            ThreadUtils.post(() -> showScanResults(items, noNetwork));
+        });
+    }
+
+    /**
+     * 主线程展示扫描结果：无结果时给出提示，有结果时弹出分组下拉列表。
+     */
+    private void showScanResults(List<Object> items, boolean noNetwork) {
+        Progress.closeDialog();
+        if (isFinishing()) return;
+        TextView scanHint = findViewById(R.id.scan_hint);
+        if (noNetwork) {
+            if (scanHint != null) {
+                scanHint.setVisibility(View.VISIBLE);
+                scanHint.setText(R.string.scan_no_network_hint);
+            }
+            Toast.makeText(context, R.string.scan_no_network_hint, Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (items == null || items.isEmpty()) {
+            if (scanHint != null) {
+                scanHint.setVisibility(View.VISIBLE);
+                scanHint.setText(R.string.scan_no_devices_hint);
+            }
+            Toast.makeText(context, R.string.scan_no_devices_hint, Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (scanHint != null) {
+            scanHint.setVisibility(View.GONE);
+        }
+
+        // adb 分组头：只包含 adb 已知设备时作为首组
+        List<Object> displayItems = new ArrayList<>(items.size() + 1);
+        boolean adbSectionStarted = false;
+        for (Object item : items) {
+            if (item instanceof DiscoveredDevice
+                    && ((DiscoveredDevice) item).getSource() == DiscoveredDevice.Source.ADB_LIST) {
+                if (!adbSectionStarted) {
+                    displayItems.add(getString(R.string.scan_adb_section));
+                    adbSectionStarted = true;
+                }
+            }
+            displayItems.add(item);
+        }
+
+        final ListPopupWindow popup = new ListPopupWindow(this);
+        final ScanResultsAdapter adapter = new ScanResultsAdapter(this, displayItems);
+        popup.setAdapter(adapter);
+        View anchor = findViewById(R.id.button_scan_network);
+        if (anchor == null) {
+            anchor = findViewById(R.id.editText_server_host);
+        }
+        popup.setAnchorView(anchor);
+        popup.setModal(true);
+        popup.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        popup.setHeight((int) (getResources().getDisplayMetrics().heightPixels * 0.6f));
+        popup.setWidth(Math.max(anchor.getWidth(), Util.dpToPx(240)));
+        popup.setOnItemClickListener((parent, view, position, id) -> {
+            Object item = adapter.getItem(position);
+            if (item instanceof DiscoveredDevice) {
+                EditText editText = findViewById(R.id.editText_server_host);
+                if (editText != null) {
+                    editText.setText(((DiscoveredDevice) item).getAddress());
+                }
+                popup.dismiss();
+            }
+        });
+        popup.show();
+    }
+
+    /**
+     * 分组下拉列表适配器：String 为不可点击的分组头，DiscoveredDevice 为设备行。
+     */
+    private static class ScanResultsAdapter extends BaseAdapter {
+
+        private static final int TYPE_HEADER = 0;
+        private static final int TYPE_DEVICE = 1;
+
+        private final Context context;
+        private final List<Object> items;
+
+        ScanResultsAdapter(Context context, List<Object> items) {
+            this.context = context;
+            this.items = items;
+        }
+
+        @Override
+        public int getCount() {
+            return items.size();
+        }
+
+        @Override
+        public Object getItem(int position) {
+            return items.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            return position;
+        }
+
+        @Override
+        public int getItemViewType(int position) {
+            return items.get(position) instanceof DiscoveredDevice ? TYPE_DEVICE : TYPE_HEADER;
+        }
+
+        @Override
+        public int getViewTypeCount() {
+            return 2;
+        }
+
+        @Override
+        public boolean isEnabled(int position) {
+            return items.get(position) instanceof DiscoveredDevice;
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            Object item = items.get(position);
+            if (item instanceof DiscoveredDevice) {
+                DiscoveredDevice device = (DiscoveredDevice) item;
+                if (convertView == null) {
+                    convertView = LayoutInflater.from(context)
+                            .inflate(android.R.layout.simple_list_item_2, parent, false);
+                }
+                TextView text1 = convertView.findViewById(android.R.id.text1);
+                TextView text2 = convertView.findViewById(android.R.id.text2);
+                text1.setText(device.getAddress());
+                String name = device.getName() == null
+                        ? context.getString(R.string.scan_android_device) : device.getName();
+                String stateLabel = stateLabel(device.getAdbState());
+                text2.setText(stateLabel == null ? name : name + " · " + stateLabel);
+                return convertView;
+            }
+            TextView text;
+            if (convertView == null) {
+                convertView = LayoutInflater.from(context)
+                        .inflate(android.R.layout.simple_list_item_1, parent, false);
+            }
+            text = convertView.findViewById(android.R.id.text1);
+            text.setText((String) item);
+            text.setGravity(Gravity.CENTER);
+            text.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            text.setTextColor(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                    ? context.getColor(R.color.status_bar)
+                    : context.getResources().getColor(R.color.status_bar));
+            int pad = Util.dpToPx(6);
+            text.setPadding(pad, pad, pad, pad);
+            return convertView;
+        }
+
+        private String stateLabel(String state) {
+            if (state == null) return null;
+            if ("device".equals(state)) return context.getString(R.string.scan_ready);
+            if ("offline".equals(state)) return context.getString(R.string.scan_offline);
+            if ("unauthorized".equals(state)) return context.getString(R.string.scan_unauthorized);
+            return state;
+        }
     }
 
 

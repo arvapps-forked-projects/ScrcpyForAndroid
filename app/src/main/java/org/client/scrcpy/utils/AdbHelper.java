@@ -11,6 +11,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -176,6 +178,51 @@ public class AdbHelper {
         }
 
         return ExecUtil.adbCommend(cmds, env, mContext.getFilesDir());
+    }
+
+    /**
+     * Parses `adb devices` output ("serial\tstate" lines, one per device).
+     * Returns a serial -> state map in output order. Pure JVM logic.
+     */
+    static Map<String, String> parseAdbDevices(String output) {
+        Map<String, String> devices = new LinkedHashMap<>();
+        if (output == null || output.isEmpty()) {
+            return devices;
+        }
+        for (String line : output.split("\n")) {
+            if (line == null || line.trim().isEmpty()) continue;
+            if (line.startsWith("List of devices")) continue;
+            String[] parts = line.trim().split("\\s+");
+            if (parts.length >= 2) {
+                devices.put(parts[0], parts[1]);
+            }
+        }
+        return devices;
+    }
+
+    /**
+     * True when the serial identifies a TCP (host:port) device, including the
+     * bracketed IPv6 form, e.g. "192.168.1.5:5555" or "[2001:db8::1]:5555".
+     * Plain device serials ("R58M12345", "emulator-5554") return false.
+     */
+    public static boolean isTcpSerial(String serial) {
+        if (serial == null || serial.isEmpty()) return false;
+        int idx = serial.lastIndexOf(':');
+        if (idx <= 0 || idx == serial.length() - 1) return false;
+        String port = serial.substring(idx + 1);
+        for (int i = 0; i < port.length(); i++) {
+            if (!Character.isDigit(port.charAt(i))) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Runs `adb devices` and returns the current device list (serial -> state).
+     * Must be called off the UI thread: adb may block while the local server is
+     * starting up.
+     */
+    public static Map<String, String> getAdbDevicesMap() {
+        return parseAdbDevices(adbCmd(App.mContext, "devices"));
     }
 
     public static void writeAssetsJarServer(Context context) {
