@@ -9,8 +9,8 @@ android {
         applicationId "org.server.scrcpy"
         minSdkVersion 21
         targetSdkVersion 31
-        versionCode 3
-        versionName "1.2"
+        versionCode 5
+        versionName "1.3.1"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
     }
@@ -27,23 +27,17 @@ android {
     }
 
     tasks.register('copyServer', Copy) {
-        def buildType = project.hasProperty('buildType') ? project.buildType : 'Debug'
+        def buildType = gradle.startParameter.taskNames.any { it.endsWith('Release') } ? 'Release' : 'Debug'
         dependsOn 'deleteServer'
         dependsOn("assemble${buildType}")
 
         def release_file = 'build/outputs/apk/release/server-release-unsigned.apk'
         def debug_file = 'build/outputs/apk/debug/server-debug.apk'
-        def debug_file2 = 'build/intermediates/apk/debug/server-debug.apk'
         def file_dest = '../app/src/main/assets/'
 
         if (buildType == "Debug") {
-            if (file(debug_file).exists()) {
-                from file(debug_file)
-                into file(file_dest)
-            } else {  // fix android studio run
-                from file(debug_file2)
-                into file(file_dest)
-            }
+            from file(debug_file)
+            into file(file_dest)
         } else {
             from file(release_file)
             into file(file_dest)
@@ -57,15 +51,15 @@ android {
         delete "../app/src/main/assets/scrcpy-server.jar"
     }
 
-    tasks.whenTaskAdded { task ->
-        task.finalizedBy(copyServer)
-    }
-    afterEvaluate {
-        packageRelease.finalizedBy(copyServer)
-    }
-    afterEvaluate {
-        packageDebug.finalizedBy(copyServer)
-    }
+//    tasks.whenTaskAdded { task ->
+//        task.finalizedBy(copyServer)
+//    }
+//    afterEvaluate {
+//        packageRelease.finalizedBy(copyServer)
+//    }
+//    afterEvaluate {
+//        packageDebug.finalizedBy(copyServer)
+//    }
 }
 
 dependencies {

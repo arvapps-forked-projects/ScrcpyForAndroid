@@ -1,7 +1,12 @@
 package org.server.scrcpy;
 
+import static org.server.scrcpy.model.CommandPacket.CmdType.VIDEO_NEW_KEY_FRAME;
+
+import android.media.MediaCodec;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.SystemClock;
+import android.util.Log;
 import android.util.Pair;
 import android.view.InputDevice;
 import android.view.InputEvent;
@@ -9,18 +14,25 @@ import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 
+import org.server.scrcpy.model.CommandPacket;
+import org.server.scrcpy.model.ControlPacket;
+import org.server.scrcpy.model.MediaPacket;
 import org.server.scrcpy.wrappers.InputManager;
 import org.server.scrcpy.control.PointersState;
 import org.server.scrcpy.control.Pointer;
 import org.server.scrcpy.device.Point;
 
 import java.io.IOException;
+import java.util.Objects;
 
 
 public class EventController {
 
     private final Device device;
     private final DroidConnection connection;
+
+    private final ScreenEncoder screenEncoder;
+
     private final MotionEvent.PointerProperties[] pointerProperties = new MotionEvent.PointerProperties[PointersState.MAX_POINTERS];
     private final MotionEvent.PointerCoords[] pointerCoords = new MotionEvent.PointerCoords[PointersState.MAX_POINTERS];
     private long lastMouseDown;
@@ -31,9 +43,10 @@ public class EventController {
     private boolean hit = false;
     private boolean proximity = false;
 
-    public EventController(Device device, DroidConnection connection) {
+    public EventController(Device device, DroidConnection connection, ScreenEncoder screenEncoder) {
         this.device = device;
         this.connection = connection;
+        this.screenEncoder = screenEncoder;
         initPointers();
     }
 
@@ -63,40 +76,47 @@ public class EventController {
         }
     }
 
-    public void control() throws IOException {
-        // on start, turn screen on
-        turnScreenOn();
+    private int[] controlByteToIntArray(byte[] buf) {
+        final int[] array = new int[buf.length / 4];
+        for (int i = 0; i < array.length; i++)
+            array[i] = (((int) (buf[i * 4]) << 24) & 0xFF000000) |
+                    (((int) (buf[i * 4 + 1]) << 16) & 0xFF0000) |
+                    (((int) (buf[i * 4 + 2]) << 8) & 0xFF00) |
+                    ((int) (buf[i * 4 + 3]) & 0xFF);
+        return array;
+    }
 
-        while (true) {
-            //           handleEvent();
-            int[] buffer = connection.NewreceiveControlEvent();
-            if (buffer != null) {
-                long now = SystemClock.uptimeMillis();
-                if (buffer[2] == 0 && buffer[3] == 0) {
-                    if (buffer[0] == 28) {
-                        proximity = true;           // Proximity event
-                    } else if (buffer[0] == 29) {
-                        proximity = false;
+    private void injectControlEvenv(byte[] buf) {
+        int[] buffer = controlByteToIntArray(buf);
+
+        long now = SystemClock.uptimeMillis();
+        if (buffer.length == 1) {
+            injectKeycode(buffer[0]);
+        } else if (buffer[2] == 0 && buffer[3] == 0) {
+            if (buffer[0] == 28) {
+                proximity = true;           // Proximity event
+            } else if (buffer[0] == 29) {
+                proximity = false;
+            } else {
+                injectKeycode(buffer[0]);
+            }
+        } else {
+            int action = buffer[0];
+            if (action == MotionEvent.ACTION_UP && (!device.isScreenOn() || proximity)) {
+                if (hit) {
+                    if (now - then < 250) {
+                        then = 0;
+                        hit = false;
+                        injectKeycode(KeyEvent.KEYCODE_POWER);
                     } else {
-                        injectKeycode(buffer[0]);
+                        then = now;
                     }
                 } else {
-                    int action = buffer[0];
-                    if (action == MotionEvent.ACTION_UP && (!device.isScreenOn() || proximity)) {
-                        if (hit) {
-                            if (now - then < 250) {
-                                then = 0;
-                                hit = false;
-                                injectKeycode(KeyEvent.KEYCODE_POWER);
-                            } else {
-                                then = now;
-                            }
-                        } else {
-                            hit = true;
-                            then = now;
-                        }
+                    hit = true;
+                    then = now;
+                }
 
-                    } else {
+            } else {
 //                        if (action == MotionEvent.ACTION_DOWN) {
 //                            lastMouseDown = now;
 //                        }
@@ -110,12 +130,43 @@ public class EventController {
 //                        MotionEvent event = MotionEvent.obtain(lastMouseDown, now, action, 1, pointerProperties, pointerCoords, 0, button, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, 0);
 //                        injectEvent(event);
 
-                        // 为支持多点触控，新增 buffer[4] 这个字节
-                        Point point = new Point(buffer[2], buffer[3]);
-                        Point newpoint = device.NewgetPhysicalPoint(point);
-                        injectTouch(action, buffer[4], newpoint, buffer[1]);
+                // 为支持多点触控，新增 buffer[4] 这个字节
+                Point point = new Point(buffer[2], buffer[3]);
+                Point newpoint = device.NewgetPhysicalPoint(point);
+                injectTouch(action, buffer[4], newpoint, buffer[1]);
+            }
+        }
+    }
+
+    private void extraCommand(CommandPacket commandPacket) {
+
+        switch (Objects.requireNonNull(CommandPacket.CmdType.getFlag(commandPacket.cmdType))) {
+            case VIDEO_NEW_KEY_FRAME:
+                screenEncoder.asyncRequestKeyFrame();
+                break;
+        }
+    }
+
+    public void control() throws IOException {
+        // on start, turn screen on
+        turnScreenOn();
+
+        while (true) {
+            //           handleEvent();
+            MediaPacket mediaPacket = connection.NewReceiveEvent();
+            try {
+                if (mediaPacket != null) {
+                    switch (mediaPacket.type) {
+                        case CONTROL:
+                            injectControlEvenv(((ControlPacket) mediaPacket).data);
+                            break;
+                        case COMMAND:
+                            extraCommand((CommandPacket) mediaPacket);
+                            break;
                     }
                 }
+            } catch (Exception e) {
+                Log.e("Scrcpy", "error : " + e);
             }
         }
     }

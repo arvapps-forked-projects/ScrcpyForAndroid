@@ -6,6 +6,7 @@ import android.media.MediaCodec;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 import android.view.Surface;
@@ -32,6 +33,8 @@ public class ScreenEncoder implements Device.RotationListener {
     private static final int MICROSECONDS_IN_ONE_SECOND = 1_000_000;
 
     private final AtomicBoolean rotationChanged = new AtomicBoolean();
+
+    private final AtomicBoolean requestKeyFrame = new AtomicBoolean(false);
 
     private int bitRate;
     private int frameRate;
@@ -105,6 +108,10 @@ public class ScreenEncoder implements Device.RotationListener {
         return rotationChanged.getAndSet(false);
     }
 
+    public void asyncRequestKeyFrame() {
+        requestKeyFrame.set(true);
+    }
+
     /**
      * 开启音频流转发
      *
@@ -128,7 +135,7 @@ public class ScreenEncoder implements Device.RotationListener {
         }).start();
     }
 
-    public void streamScreen(Device device, OutputStream outputStream) throws IOException {
+    public void streamScreen(Options options, Device device, OutputStream outputStream) throws IOException {
         // Log.d("ScreenCapture", buildDisplayListMessage());
         int[] buf = new int[]{device.getScreenInfo().getDeviceSize().getWidth(), device.getScreenInfo().getDeviceSize().getHeight()};
         final byte[] array = new byte[buf.length * 4];   // https://stackoverflow.com/questions/2183240/java-integer-to-byte-array
@@ -141,7 +148,9 @@ public class ScreenEncoder implements Device.RotationListener {
         }
         outputStream.write(array, 0, array.length);   // Sending device resolution
 
-        startAudioCapture(outputStream);  // start audio capture
+        if(options.isEnableAudioForward()){
+            startAudioCapture(outputStream);  // start audio capture
+        }
 
         MediaFormat format = createFormat(bitRate, frameRate, iFrameInterval);
         device.setRotationListener(this);
@@ -228,6 +237,12 @@ public class ScreenEncoder implements Device.RotationListener {
                 if (consumeRotationChange()) {
                     // must restart encoding with new size
                     break;
+                }
+                if (requestKeyFrame.getAndSet(false)) {
+                    Bundle b = new Bundle();
+                    b.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
+                    codec.setParameters(b);
+                    Log.i("Scrcpy", "request new key frame");
                 }
                 if (outputBufferId >= 0) {
                     ByteBuffer outputBuffer;

@@ -10,14 +10,34 @@ android {
     defaultConfig {
         minSdkVersion 21
         targetSdkVersion 31
-        versionCode 9
-        versionName "1.1.0"
+        versionCode 14
+        versionName "1.5.1"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         setProperty("archivesBaseName", "scrcpy")
     }
+    signingConfigs {
+        release {
+            storeFile file("scrcpy.jks")
+
+            def properties = new Properties()
+            if (file("../local.properties").exists()) {
+                file("../local.properties").withInputStream { stream ->
+                    properties.load(stream)
+                }
+            }
+
+            storePassword System.getenv("SIGNING_STORE_PASSWORD") ?: properties.getProperty("SIGNING_STORE_PASSWORD")
+            keyAlias System.getenv("SIGNING_KEY_ALIAS") ?: properties.getProperty("SIGNING_KEY_ALIAS")
+            keyPassword System.getenv("SIGNING_KEY_PASSWORD") ?: properties.getProperty("SIGNING_KEY_PASSWORD")
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
+            if (file("scrcpy.jks").exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 
@@ -29,7 +49,7 @@ android {
 
 
     tasks.whenTaskAdded { task ->
-        def buildType = project.hasProperty('buildType') ? project.buildType : 'Debug'
+        def buildType = gradle.startParameter.taskNames.any { it.endsWith('Release') } ? 'Release' : 'Debug'
 
         task.dependsOn ":server:assemble${buildType}"
         task.dependsOn ":server:copyServer"

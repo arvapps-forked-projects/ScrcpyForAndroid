@@ -1,0 +1,123 @@
+name: Build Android ADB (ARM)
+
+# 由 gemini 辅助生成
+
+on:
+  workflow_dispatch: # 支持手动点击运行
+
+jobs:
+  build-adb:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake g++-multilib python3-pip
+
+      - name: Setup Android NDK
+        uses: android-actions/setup-android@v3
+        with:
+          ndk: 27.1.12297006 # 对应 r27b 版本的具体 Build Number
+
+      - name: Verify NDK Path
+        run: |
+          echo "ANDROID_NDK_HOME: $ANDROID_NDK_HOME"
+          if [ -z "$ANDROID_NDK_HOME" ]; then
+            echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.1.12297006" >> $GITHUB_ENV
+          fi
+
+      - name: Fetch AOSP Source
+        working-directory: ./platform-tools
+        run: python3 get_source.py --tags platform-tools-35.0.2
+
+      # 5. 替代原有的 Build Host Protoc 步骤
+      # 必须自行编译 protobuf，否则头文件无法匹配
+#      - name: Install System Protoc
+#        run: |
+#          sudo apt-get update
+#          sudo apt-get install -y protobuf-compiler
+#
+#          PROTOC_ABS_PATH=$(which protoc)
+#          echo "PROTOC_PATH=$PROTOC_ABS_PATH" >> $GITHUB_ENV
+#
+#          # 打印版本信息，方便调试
+#          echo "Using system protoc version:"
+#          protoc --version
+
+      # --- fix CMakeLists.txt ---
+      - name: Patch Protobuf CMakeLists
+        run: |
+          TARGET_FILE="platform-tools/src/protobuf/CMakeLists.txt"
+          echo "Patching $TARGET_FILE..."
+          
+          # 使用 sed 在 ${protobuf_SOURCE_DIR}/src 后面插入一行新的路径
+          # 注意：这里匹配原有的行并在其后添加新行
+          sed -i 's|${protobuf_SOURCE_DIR}/src)|${protobuf_SOURCE_DIR}/src\n  ${protobuf_SOURCE_DIR}/android)|' "$TARGET_FILE"
+          
+          # 打印修改后的部分内容以供确认
+          echo "Verification of Patch:"
+          grep -C 3 "protobuf_SOURCE_DIR" "$TARGET_FILE"
+
+      - name: Build Host Protoc
+        run: |
+          cd platform-tools/src/protobuf
+          mkdir -p build && cd build
+          cmake -GNinja -Dprotobuf_BUILD_TESTS=OFF ..
+          ninja -j$(nproc)
+
+          PROTOC_ABS_PATH=$(realpath protoc)
+          echo "PROTOC_PATH=$PROTOC_ABS_PATH" >> $GITHUB_ENV
+          echo "Generated Protoc at: $PROTOC_ABS_PATH"
+
+      - name: Build ADB (arm64-v8a)
+        working-directory: ./platform-tools
+        run: |
+          export CXXFLAGS="-std=c++14 -Wno-vla -Wno-error"
+          export CFLAGS="-Wno-vla -Wno-error"
+          
+          python3 build.py \
+            --ndk=$ANDROID_NDK_HOME \
+            --abi=arm64-v8a \
+            --build=build/aarch64 \
+            --protoc=${{ env.PROTOC_PATH }} \
+            --target=adb
+
+      - name: Build ADB (armeabi-v7a)
+        working-directory: ./platform-tools
+        run: |
+          python3 build.py \
+            --ndk=$ANDROID_NDK_HOME \
+            --abi=armeabi-v7a \
+            --build=build/arm \
+            --protoc=${{ env.PROTOC_PATH }} \
+            --target=adb
+
+#      - name: Organize Artifacts
+#        run: |
+#          mkdir -p dist/arm64-v8a dist/armeabi-v7a
+#          cp platform-tools/build/aarch64/platform-tools/adb dist/arm64-v8a/libadb.so
+#          cp platform-tools/build/arm/platform-tools/adb dist/armeabi-v7a/libadb.so
+#
+#          file dist/arm64-v8a/libadb.so
+#          file dist/armeabi-v7a/libadb.so
+
+#      - name: Upload Result
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: adb-binaries-for-android
+#          path: dist/
+#           retention-days: 1
+
+      - name: Upload Full Build Directory
+        uses: actions/upload-artifact@v4
+        with:
+          name: adb-binaries-for-android
+          path: platform-tools/build/
+          retention-days: 1

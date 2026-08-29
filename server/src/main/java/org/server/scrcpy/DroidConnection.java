@@ -1,7 +1,15 @@
 package org.server.scrcpy;
 
 
+import android.util.Log;
+
+import org.server.scrcpy.model.ByteUtils;
+import org.server.scrcpy.model.CommandPacket;
+import org.server.scrcpy.model.ControlPacket;
+import org.server.scrcpy.model.MediaPacket;
+
 import java.io.Closeable;
+import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,12 +22,12 @@ public final class DroidConnection implements Closeable {
 
     private static Socket socket = null;
     private OutputStream outputStream;
-    private InputStream inputStream;
+    private DataInputStream inputStream;
 
     private DroidConnection(Socket socket) throws IOException {
         this.socket = socket;
 
-        inputStream = socket.getInputStream();
+        inputStream = new DataInputStream(socket.getInputStream());
         outputStream = socket.getOutputStream();
     }
 
@@ -64,27 +72,48 @@ public final class DroidConnection implements Closeable {
 
 
     /**
-     * TODO 需要根据原版 scrcpy 进行改造消息传送，目前仅支持 触控消息
      *
      * @return
      * @throws IOException
      */
-    public int[] NewreceiveControlEvent() throws IOException {
+    public MediaPacket NewReceiveEvent() throws IOException {
 
-        byte[] buf = new byte[20];
-        int n = inputStream.read(buf, 0, 20);
-        if (n == -1) {
+        byte[] packetSize = new byte[4];
+        inputStream.readFully(packetSize, 0, packetSize.length);
+
+        int size = ByteUtils.bytesToInt(packetSize);
+
+        if (size > 4 * 1024 * 1024) {  // 如果单个数据包大于 4m ，直接断开连接
             throw new EOFException("Event controller socket closed");
         }
+        byte[] packet = new byte[size];
+        inputStream.readFully(packet, 0, size);
 
-        final int[] array = new int[buf.length / 4];
-        for (int i = 0; i < array.length; i++)
-            array[i] = (((int) (buf[i * 4]) << 24) & 0xFF000000) |
-                    (((int) (buf[i * 4 + 1]) << 16) & 0xFF0000) |
-                    (((int) (buf[i * 4 + 2]) << 8) & 0xFF00) |
-                    ((int) (buf[i * 4 + 3]) & 0xFF);
-        return array;
+        MediaPacket.Type type = MediaPacket.Type.getType(packet[0]);
+        switch (type) {
+            case CONTROL:
+                return new ControlPacket().fromArray(packet);
+            case COMMAND:
+                return new CommandPacket().fromArray(packet);
+        }
 
+
+//        byte[] buf = new byte[20];
+//        int n = inputStream.read(buf, 0, 20);
+//        if (n == -1) {
+//            throw new EOFException("Event controller socket closed");
+//        }
+//
+//        final int[] array = new int[buf.length / 4];
+//        for (int i = 0; i < array.length; i++)
+//            array[i] = (((int) (buf[i * 4]) << 24) & 0xFF000000) |
+//                    (((int) (buf[i * 4 + 1]) << 16) & 0xFF0000) |
+//                    (((int) (buf[i * 4 + 2]) << 8) & 0xFF00) |
+//                    ((int) (buf[i * 4 + 3]) & 0xFF);
+//        return array;
+
+
+        return null;
 
     }
 
