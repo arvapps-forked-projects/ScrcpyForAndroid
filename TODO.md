@@ -19,6 +19,23 @@ On selection, fill the host field so the existing `adb connect` flow takes over.
 | Verify: `assembleDebug`, unit tests, lint | Done — all green (JDK 17) |
 | Commit + push | Done |
 
+## Android version migration (2026-08-29)
+
+Installer on the Vivo V2503i (Android 16) flagged the app as "built for an old
+Android version" while targetSdk was 31. Fixed by migrating the build:
+
+- AGP 8.0.0 -> 8.2.2 (`build.gradle`); compileSdk/targetSdk 31 -> 34 in `app` and
+  `server` modules; app version 1.5.1 (code 14) -> 1.5.2 (code 15).
+- No manifest changes needed: the app has no foreground services, no
+  notifications, and all components already carry `android:exported` where
+  required (targetSdk 31+ rule).
+- Side benefit: AGP 8.2's R8/D8 handles javac-21 class files, so the JDK-17
+  build requirement from the D8 8.0 crash is gone in principle (still used, it
+  is the supported combination).
+- Rebuilt, lint+unit tests green (11/11), signature verified, released as
+  `release/ScrcpyForAndroid-1.5.2.apk`, installed on device (targetSdk 34
+  confirmed via `dumpsys package`).
+
 ## Verification (2026-08-29)
 
 - `./gradlew :app:assembleDebug` — SUCCESS. APK ~10.2 MB (classes*.dex + 4 ABIs
