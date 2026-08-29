@@ -19,6 +19,24 @@ On selection, fill the host field so the existing `adb connect` flow takes over.
 | Verify: `assembleDebug`, unit tests, lint | Done — all green (JDK 17) |
 | Commit + push | Done |
 
+## Session wrap-up (2026-08-29) — pending / in progress
+
+Current status at end of session 2026-08-29. Code is committed and pushed
+(`d278f8e` feature, `4dbf6e1` SDK migration); implementation work is PAUSED.
+The open items below are verification and housekeeping, not new code:
+
+| # | Item | State | Owner |
+|---|------|-------|-------|
+| 1 | Confirm the "old version of Android" warning is gone on the Vivo V2503i after the v1.5.2 (targetSdk 34) install | **Pending** — user to check on device | User |
+| 2 | LAN scanner on-device walkthrough: scan network → pick device → Start → mirror connects (see "Manual device test" below) | **Pending** — feature verified only by unit tests so far | User |
+| 3 | Back up `app/scrcpy.jks` (sole signing key, 10,000-day validity, gitignored) to a safe location outside this repo | **Pending** — critical: losing it prevents future updates in place | User |
+| 4 | If item 1 shows the warning persists: escalate to targetSdk/compileSdk 35/36 (requires AGP 8.6+/8.9+, Gradle wrapper bump, Android 15 edge-to-edge handling) | **Blocked** on item 1 | Agent |
+| 5 | Wi-Fi adb reliability: wedged shell once behind an install prompt, one truncated push. Switch to USB pairing for installs if it recurs | **Pending** — maintenance | Both |
+
+Everything in the status table above (design, implementation, tests, release,
+install) is Done and committed. The "Deferred" feature ideas below remain
+deferred by design — revisit in a future session.
+
 ## Android version migration (2026-08-29)
 
 Installer on the Vivo V2503i (Android 16) flagged the app as "built for an old
